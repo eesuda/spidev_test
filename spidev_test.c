@@ -56,7 +56,7 @@ static void hex_dump(const void *src, size_t length, size_t line_size, char *pre
 	const unsigned char *line = address;
 	unsigned char c;
 
-	printf("%s | ", prefix);
+	/* printf("%s | ", prefix); */
 	while (length-- > 0) {
 		printf("%02X ", *address++);
 		if (!(++i % line_size) || (length == 0 && i % line_size)) {
@@ -134,7 +134,7 @@ static void transfer(int fd, uint8_t const *tx, uint8_t const *rx, size_t len)
 
 	if (verbose)
 		hex_dump(tx, len, 32, "TX");
-	hex_dump(rx, len, 32, "RX");
+	/* hex_dump(rx, len, 32, "RX"); */
 }
 
 static void print_usage(const char *prog)
@@ -255,6 +255,7 @@ int main(int argc, char *argv[])
 	int fd;
 	uint8_t *tx;
 	uint8_t *rx;
+	int16_t acc;
 	int size;
 
 	parse_opts(argc, argv);
@@ -296,9 +297,9 @@ int main(int argc, char *argv[])
 	if (ret == -1)
 		pabort("can't get max speed hz");
 
-	printf("spi mode: 0x%x\n", mode);
+	/* printf("spi mode: 0x%x\n", mode);
 	printf("bits per word: %d\n", bits);
-	printf("max speed: %d Hz (%d KHz)\n", speed, speed/1000);
+	printf("max speed: %d Hz (%d KHz)\n", speed, speed/1000); */
 
 	if (input_tx) {
 		size = strlen(input_tx+1);
@@ -309,7 +310,17 @@ int main(int argc, char *argv[])
 		free(rx);
 		free(tx);
 	} else {
-		transfer(fd, default_tx, default_rx, sizeof(default_tx));
+		tx = malloc(2);
+		rx = malloc(2);
+                tx[0] = 0x15;
+		transfer(fd, tx, rx, 2); /* read X_MSB */
+                tx[1] = rx[1];
+                tx[0] = 0x10;
+		transfer(fd, tx, rx, 2); /* read X_LSB */
+                acc = (tx[1] << 8) | rx[1];
+		free(rx);
+		free(tx);
+                printf("%f", acc / 32 / 1000.);
 	}
 
 	close(fd);
